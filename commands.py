@@ -1,4 +1,3 @@
-import hashlib
 import secrets
 import string
 import os
@@ -6,6 +5,7 @@ import pyperclip
 from getpass import getpass as input_password
 
 from utils import cmdRed, cmdGreen
+from hashing import get_full_hash, get_single_hash
 
 def _encrypt_data(data, key):
     data = key + data + key
@@ -48,7 +48,8 @@ def add_file(ENCRYPTED_FILES_PATH, file_path):
     with open(file_path, 'r') as file:
         file_content = file.read()
 
-        encryption_key = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
+        password_hash = get_full_hash(salt + password)
+        encryption_key = get_single_hash(password_hash)
 
         encrypted_data = _encrypt_data(file_content, encryption_key)
 
@@ -56,7 +57,7 @@ def add_file(ENCRYPTED_FILES_PATH, file_path):
         file_name = os.path.splitext(file_path)[0]
 
         with open(ENCRYPTED_FILES_PATH + file_name + '.ura', 'x') as file:
-            file.write(encryption_key + ' ' + salt + "\n" + encrypted_data)
+            file.write(password_hash + ' ' + salt + "\n" + encrypted_data)
 
         print(f"\nFile '{file_path}' has been added to the prison realm.")
         os.remove(file_path)
@@ -100,16 +101,18 @@ def open_file(ENCRYPTED_FILES_PATH, file_name) -> int:
         
         newline_index = file_content.find('\n')
 
-        encryption_key, salt = file_content[:newline_index].split()
+        file_password_hash, salt = file_content[:newline_index].split()
 
         encrypted_data = file_content[newline_index + 1:]
 
-        decryption_key = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
+        password_hash = get_full_hash(salt + password)
 
-        if (encryption_key != decryption_key):
+        if (file_password_hash != password_hash):
             print('Wrong password!')
             cmdRed()
             return 1
+        
+        decryption_key = get_single_hash(password_hash)
 
         decrypted_data = _decrypt_data(encrypted_data, decryption_key)[len(decryption_key):-len(decryption_key)]
         
@@ -120,12 +123,13 @@ def open_file(ENCRYPTED_FILES_PATH, file_name) -> int:
     characters = string.ascii_letters + string.digits
     new_salt = ''.join(secrets.choice(characters) for _ in range(64))
 
-    new_encryption_key = hashlib.sha256((new_salt + password).encode('utf-8')).hexdigest()
+    new_password_hash = get_full_hash(new_salt + password)
+    new_encryption_key = get_single_hash(new_password_hash)
 
     encrypted_data = _encrypt_data(decrypted_data, new_encryption_key)
 
     with open(file_path, 'w') as file:
-        file.write(new_encryption_key + ' ' + new_salt + "\n" + encrypted_data)
+        file.write(new_password_hash + ' ' + new_salt + "\n" + encrypted_data)
 
     print('\nFile content copied to clipboard.')
     cmdGreen()

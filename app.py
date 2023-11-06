@@ -26,7 +26,7 @@ while True:
     # check if encrypted files path folder has encrypted files
     if (len(encrypted_files) > 0):
         for index, file_name in enumerate(encrypted_files):
-            message += str(index + 1) + ". " + file_name
+            message += str(index + 1) + ". " + file_name + "\n"
     else:
         message += "none"
 
